@@ -1,64 +1,69 @@
 import os
+from typing import List
 
 from PyQt6 import QtCore
-from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QIcon
 from PyQt6.QtWidgets import QWidget, QVBoxLayout, QPushButton, QHBoxLayout, \
-    QMainWindow, QMessageBox, QFileDialog
+    QMainWindow, QMessageBox, QFileDialog, QGroupBox, QLineEdit, QListWidget, QCheckBox, QListWidgetItem
 
-from app.img_dialog import ImgDialog
+from app.tabs.FileHandler.img_dialog import ImgDialog
+from app.tabs.FileHandler.pdf_dialog import PdfDialog
 from packages.Keys import Keys
-from pdf_dialog import PdfDialog
+from packages.Security import Security
 
 
 class MainWin(QMainWindow):
-    resource_folder = os.path.join(os.path.dirname(__file__), os.pardir, 'resources')
+    resource_folder = os.path.join(os.path.dirname(__file__), 'resources')
     encrypt = None
 
     def __init__(self):
         super().__init__()
-        self.resize(540, 400)
-
-        # Key Button
-        hbox = QHBoxLayout()
-        keybutton = QPushButton('Generate Key')
-        keybutton.resize(50, 20)
-        keybutton.clicked.connect(self.on_generate_key)
-
-        hbox.addWidget(keybutton)
-
-        # Center the button in the horizontal layout
-        hbox.setAlignment(keybutton, Qt.AlignmentFlag.AlignHCenter)
-
+        self.resize(600, 600)
         # Create a vertical box layout for the main window
         vbox = QVBoxLayout()
 
-        vbox.addLayout(hbox)
-        vbox.addStretch(1)
+        """ 
+                Cipher
+        """
+        cipher_layout = QVBoxLayout()
+        # Cipher box
+        self.gb_cipher = QGroupBox('Cipher')
+        cipherkey_box = QHBoxLayout()
+        self.key_edit = QLineEdit()
+        self.key_edit.setPlaceholderText('Key input')
+        create_key = QPushButton('Create')
+        create_key.resize(40, 20)
+        create_key.clicked.connect(self.on_generate_key)
+        load_key = QPushButton('Load')
+        load_key.resize(40, 20)
+        load_key.clicked.connect(self.set_key_path)
 
-        # Create a widget to hold the main layout
-        widget = QWidget()
-        widget.setLayout(vbox)
+        settings_layout = QHBoxLayout()
 
-        """ Add Encrypt/Decrypt options """
-        option_layout = QHBoxLayout()
-        option_layout.addStretch()
-        # create buttons
         self.encrypt_button = QPushButton('Encrypt')
         self.encrypt_button.clicked.connect(self.encrypt)
         self.encrypt_button.setIconSize(QtCore.QSize(25, 64))
-        option_layout.addWidget(self.encrypt_button)
 
-        # connect buttons to methods
         self.decrypt_button = QPushButton('Decrypt')
         self.decrypt_button.clicked.connect(self.decrypt)
         self.decrypt_button.setIconSize(QtCore.QSize(20, 64))
 
-        option_layout.addWidget(self.decrypt_button)
-        option_layout.addStretch()
-        vbox.addLayout(option_layout)
+        cipherkey_box.addWidget(self.key_edit)
+        cipherkey_box.addWidget(create_key)
+        cipherkey_box.addWidget(load_key)
 
-        """ Add The three functional buttons options """
+        settings_layout.addWidget(self.encrypt_button)
+        settings_layout.addWidget(self.decrypt_button)
+
+        cipher_layout.addLayout(cipherkey_box)
+        cipher_layout.addLayout(settings_layout)
+        self.gb_cipher.setLayout(cipher_layout)
+        vbox.addWidget(self.gb_cipher)
+
+        """ 
+                Add The three functional buttons options 
+        """
+        self.gb_operations = QGroupBox('Choose an input to encrypt/decrypt')
         # Create a horizontal box layout for the buttons
         button_layout = QHBoxLayout()
         # Create a button with a PDF logo
@@ -66,7 +71,6 @@ class MainWin(QMainWindow):
         self.pdf_button.setIcon(QIcon(os.path.join(self.resource_folder, 'pdf_icon.png')))
         self.pdf_button.setIconSize(QtCore.QSize(64, 64))
         self.pdf_button.clicked.connect(self.on_click_pdf)
-        button_layout.addWidget(self.pdf_button)
 
         # Create a button with a PNG logo
         self.png_button = QPushButton()
@@ -74,21 +78,116 @@ class MainWin(QMainWindow):
         self.png_button.setIconSize(QtCore.QSize(64, 64))
         self.png_button.clicked.connect(self.on_click_img)
 
-        button_layout.addWidget(self.png_button)
-
-        # Create a button with a text-file logo
         self.txt_button = QPushButton()
         self.txt_button.setIcon(QIcon(os.path.join(self.resource_folder, 'file_icon.png')))
         self.txt_button.setIconSize(QtCore.QSize(64, 64))
         # txt_button.clicked.connect(self.on_click_file)
-        button_layout.addWidget(self.txt_button)
 
         self.pdf_button.setEnabled(False)
         self.png_button.setEnabled(False)
         self.txt_button.setEnabled(False)
 
-        vbox.addLayout(button_layout)
+        button_layout.addWidget(self.txt_button)
+        button_layout.addWidget(self.pdf_button)
+        button_layout.addWidget(self.png_button)
+        self.gb_operations.setLayout(button_layout)
+
+        vbox.addWidget(self.gb_operations)
+
+        """
+            Output Folder
+        """
+
+        self.gb_output = QGroupBox('Input and Output')
+
+        dirs = QHBoxLayout()
+
+        input_dir = QVBoxLayout()
+        self.input_dir_edit = QLineEdit()
+        self.input_dir_edit.setPlaceholderText('Path to input folder')
+        self.input_list = QListWidget()
+
+        input_dir_button = QPushButton('Choose input folder')
+        input_dir_button.resize(40, 20)
+        input_dir_button.clicked.connect(self.set_input_folder)
+
+        # Add the list widget to the layout
+        input_dir.addWidget(input_dir_button)
+        input_dir.addWidget(self.input_dir_edit)
+        input_dir.addWidget(self.input_list)
+
+        output_dir = QVBoxLayout()
+        self.output_dir_edit = QLineEdit()
+        self.output_dir_edit.setPlaceholderText('Path to folder')
+        self.output_list = QListWidget()
+
+        output_dir_button = QPushButton('Set output folder')
+        output_dir_button.resize(40, 20)
+        output_dir_button.clicked.connect(self.set_output_folder)
+
+        output_dir.addWidget(output_dir_button)
+        output_dir.addWidget(self.output_dir_edit)
+        output_dir.addWidget(self.output_list)
+
+        dirs.addLayout(input_dir)
+        dirs.addLayout(output_dir)
+
+        self.gb_output.setLayout(dirs)
+        vbox.addWidget(self.gb_output)
+
+        """
+                Log Box
+        """
+        self.gb_run = QGroupBox()
+        run_layout = QHBoxLayout()
+        run = QPushButton('Run')
+        run.clicked.connect(self.on_run)
+
+        run_layout.addWidget(run)
+        self.gb_run.setLayout(run_layout)
+        vbox.addWidget(self.gb_run)
+
+        widget = QWidget()
+        widget.setLayout(vbox)
         self.setCentralWidget(widget)
+
+    def update_input_dir_list(self):
+        self.input_list.clear()
+        try:
+            files = os.listdir(self.input_dir_edit.text())
+            # Add the files to the list widget
+            for file in files:
+                item = QListWidgetItem()
+                checkbox = QCheckBox()
+                checkbox.setText(file)
+                self.input_list.addItem(item)
+                self.input_list.setItemWidget(item, checkbox)
+        except FileNotFoundError:
+            self.input_list.clear()
+
+    def update_output_dir_list(self):
+        self.output_list.clear()
+        try:
+            files = os.listdir(self.output_dir_edit.text())
+            # Add the files to the list widget
+            for file in files:
+                self.output_list.addItem(file)
+        except FileNotFoundError:
+            self.output_list.clear()
+
+    def set_output_folder(self):
+        url = QFileDialog.getExistingDirectory(self)
+        self.output_dir_edit.setText(url)
+        self.update_output_dir_list()
+
+    def set_input_folder(self):
+        url = QFileDialog.getExistingDirectory(self)
+        self.input_dir_edit.setText(url)
+        self.update_input_dir_list()
+
+    def set_key_path(self):
+        filename, _ = QFileDialog.getOpenFileName(self, 'Choose')
+        self.key_edit.setText(filename)
 
     def enable_buttons(self):
         self.pdf_button.setEnabled(True)
@@ -130,11 +229,38 @@ class MainWin(QMainWindow):
             filename, _ = QFileDialog.getSaveFileName(self, 'Save Key', '', 'Key files (*.pem)')
             Keys.save_key(key, filename)
             QMessageBox.information(self, 'Key saved', 'The key has been saved to the file: {}'.format(filename))
+            self.key_edit.setText(filename)
 
-    def on_click_pdf(self):
-        pdf_dialog = PdfDialog()
-        pdf_dialog.on_accept(encrypt=self.encrypt)
+    def get_chosen_files(self) -> List[str]:
+        files = []
+        for i in range(self.input_list.count()):
+            item = self.input_list.item(i)
+            checkbox = self.input_list.itemWidget(item)
+            if checkbox.isChecked():
+                files.append(checkbox.text())
+        return files
 
-    def on_click_img(self):
-        img_dialog = ImgDialog()
-        img_dialog.on_accept(encrypt=self.encrypt)
+    def on_run(self):
+        chosen_files = self.get_chosen_files()
+        key = Keys.load_key(self.key_edit.text())
+
+        if self.encrypt:
+            for file in chosen_files:
+                full_path = os.path.join(self.input_dir_edit.text(), file)
+                Security.binary_encrypt(key=key, input_path=full_path, output_dir=self.output_dir_edit.text())
+
+            msg = f"Files have been decrypted!\n\n Find them in {self.output_dir_edit.text()}"
+
+        else:
+            for file in chosen_files:
+                full_path = os.path.join(self.input_dir_edit.text(), file)
+                Security.binary_decrypt(key=key, input_path=full_path, output_dir=self.output_dir_edit.text())
+
+            msg = f"Files have been decrypted!\n\n Find them in {self.output_dir_edit.text()}"
+
+        self.update_output_dir_list()
+        success_popup = QMessageBox()
+        success_popup.setText(msg)
+        success_popup.setWindowTitle("Run Complete")
+        success_popup.addButton('OK', QMessageBox.ButtonRole.AcceptRole)
+        success_popup.exec()

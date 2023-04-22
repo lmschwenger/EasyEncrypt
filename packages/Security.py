@@ -1,3 +1,4 @@
+import os.path
 from typing import Union
 
 import PyPDF2
@@ -7,9 +8,15 @@ from cryptography.fernet import Fernet
 class Security:
 
     @staticmethod
-    def encrypt_image(key: bytes, image_path: str, output_path: str) -> None:
-        # Open the image file and read its contents
-        with open(image_path, 'rb') as f:
+    def binary_encrypt(key: bytes, input_path: str, output_dir: str) -> None:
+        filename, ext = os.path.splitext(os.path.basename(input_path))
+
+        if '.decrypted' in filename:
+            output_path = os.path.join(output_dir, filename.replace('.decrypted', '') + ext)
+        else:
+            output_path = os.path.join(output_dir, f"{filename}.encrypted{ext}")
+
+        with open(input_path, 'rb') as f:
             plaintext = f.read()
 
         cipher = Fernet(key)
@@ -19,8 +26,15 @@ class Security:
             f.write(ciphertext)
 
     @staticmethod
-    def decrypt_image(key: bytes, image_path: str, output_path: str) -> None:
-        with open(image_path, 'rb') as f:
+    def binary_decrypt(key: bytes, input_path: str, output_dir: str) -> None:
+        filename, ext = os.path.splitext(os.path.basename(input_path))
+
+        if '.encrypted' in filename:
+            output_path = os.path.join(output_dir, filename.replace('.encrypted', '') + ext)
+        else:
+            output_path = os.path.join(output_dir, f"{filename}.decrypted.{ext}")
+
+        with open(input_path, 'rb') as f:
             ciphertext = f.read()
 
         cipher = Fernet(key)

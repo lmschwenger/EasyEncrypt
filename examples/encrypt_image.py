@@ -16,4 +16,4 @@ key_path = os.path.join(output_dir, 'key.pem')
 key = Keys.load_key(key_path)
 
 #Security.encrypt_image(key, fresh_img_path, encrypted_img_path)
-Security.decrypt_image(key, encrypted_img_path, decrypted_img_path)
+Security.binary_decrypt(key, encrypted_img_path, output_dir)
