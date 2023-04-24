@@ -2,12 +2,10 @@ import os
 from typing import List
 
 from PyQt6 import QtCore
-from PyQt6.QtGui import QIcon
 from PyQt6.QtWidgets import QWidget, QVBoxLayout, QPushButton, QHBoxLayout, \
     QMainWindow, QMessageBox, QFileDialog, QGroupBox, QLineEdit, QListWidget, QCheckBox, QListWidgetItem
 
-from app.tabs.FileHandler.img_dialog import ImgDialog
-from app.tabs.FileHandler.pdf_dialog import PdfDialog
+from packages.ErrorHandler import ErrorHandler
 from packages.Keys import Keys
 from packages.Security import Security
 
@@ -31,6 +29,7 @@ class MainWin(QMainWindow):
         cipherkey_box = QHBoxLayout()
         self.key_edit = QLineEdit()
         self.key_edit.setPlaceholderText('Key input')
+        self.key_edit.setReadOnly(True)
         create_key = QPushButton('Create')
         create_key.resize(40, 20)
         create_key.clicked.connect(self.on_generate_key)
@@ -60,40 +59,6 @@ class MainWin(QMainWindow):
         self.gb_cipher.setLayout(cipher_layout)
         vbox.addWidget(self.gb_cipher)
 
-        """ 
-                Add The three functional buttons options 
-        """
-        self.gb_operations = QGroupBox('Choose an input to encrypt/decrypt')
-        # Create a horizontal box layout for the buttons
-        button_layout = QHBoxLayout()
-        # Create a button with a PDF logo
-        self.pdf_button = QPushButton()
-        self.pdf_button.setIcon(QIcon(os.path.join(self.resource_folder, 'pdf_icon.png')))
-        self.pdf_button.setIconSize(QtCore.QSize(64, 64))
-        self.pdf_button.clicked.connect(self.on_click_pdf)
-
-        # Create a button with a PNG logo
-        self.png_button = QPushButton()
-        self.png_button.setIcon(QIcon(os.path.join(self.resource_folder, 'img_icon.png')))
-        self.png_button.setIconSize(QtCore.QSize(64, 64))
-        self.png_button.clicked.connect(self.on_click_img)
-
-        self.txt_button = QPushButton()
-        self.txt_button.setIcon(QIcon(os.path.join(self.resource_folder, 'file_icon.png')))
-        self.txt_button.setIconSize(QtCore.QSize(64, 64))
-        # txt_button.clicked.connect(self.on_click_file)
-
-        self.pdf_button.setEnabled(False)
-        self.png_button.setEnabled(False)
-        self.txt_button.setEnabled(False)
-
-        button_layout.addWidget(self.txt_button)
-        button_layout.addWidget(self.pdf_button)
-        button_layout.addWidget(self.png_button)
-        self.gb_operations.setLayout(button_layout)
-
-        vbox.addWidget(self.gb_operations)
-
         """
             Output Folder
         """
@@ -104,6 +69,7 @@ class MainWin(QMainWindow):
 
         input_dir = QVBoxLayout()
         self.input_dir_edit = QLineEdit()
+        self.input_dir_edit.setReadOnly(True)
         self.input_dir_edit.setPlaceholderText('Path to input folder')
         self.input_list = QListWidget()
 
@@ -118,10 +84,11 @@ class MainWin(QMainWindow):
 
         output_dir = QVBoxLayout()
         self.output_dir_edit = QLineEdit()
+        self.output_dir_edit.setReadOnly(True)
         self.output_dir_edit.setPlaceholderText('Path to folder')
         self.output_list = QListWidget()
 
-        output_dir_button = QPushButton('Set output folder')
+        output_dir_button = QPushButton('Choose output folder')
         output_dir_button.resize(40, 20)
         output_dir_button.clicked.connect(self.set_output_folder)
 
@@ -140,10 +107,11 @@ class MainWin(QMainWindow):
         """
         self.gb_run = QGroupBox()
         run_layout = QHBoxLayout()
-        run = QPushButton('Run')
-        run.clicked.connect(self.on_run)
+        self.run = QPushButton('Run')
+        self.run.setEnabled(False)
+        self.run.clicked.connect(self.on_run)
 
-        run_layout.addWidget(run)
+        run_layout.addWidget(self.run)
         self.gb_run.setLayout(run_layout)
         vbox.addWidget(self.gb_run)
 
@@ -189,19 +157,14 @@ class MainWin(QMainWindow):
         filename, _ = QFileDialog.getOpenFileName(self, 'Choose')
         self.key_edit.setText(filename)
 
-    def enable_buttons(self):
-        self.pdf_button.setEnabled(True)
-        self.png_button.setEnabled(True)
-        self.txt_button.setEnabled(True)
-
     def encrypt(self):
-        self.enable_buttons()
+        self.run.setEnabled(True)
         self.encrypt = True
         self.encrypt_button.setEnabled(False)
         self.decrypt_button.setEnabled(True)
 
     def decrypt(self):
-        self.enable_buttons()
+        self.run.setEnabled(True)
         self.encrypt = False
         self.decrypt_button.setEnabled(False)
         self.encrypt_button.setEnabled(True)
@@ -221,7 +184,7 @@ class MainWin(QMainWindow):
         popup.addButton('Cancel', QMessageBox.ButtonRole.RejectRole)
 
         # Show the pop-up window and wait for the user to interact with it
-        response = popup.exec()
+        popup.exec()
 
         key = Keys.generate_key()
         # If the user clicked the Save button, generate the key
@@ -240,27 +203,43 @@ class MainWin(QMainWindow):
                 files.append(checkbox.text())
         return files
 
+    def run_is_valid(self) -> bool:
+        if self.input_dir_edit.text() == '':
+            ErrorHandler().input_dir_missing_error()
+            return False
+        elif self.output_dir_edit.text() == '':
+            ErrorHandler().output_dir_missing_error()
+            return False
+        elif self.key_edit.text() == '':
+            ErrorHandler().key_missing_error()
+            return False
+        elif not self.get_chosen_files():
+            ErrorHandler().no_files_chosen_error()
+            return False
+        return True
+
     def on_run(self):
         chosen_files = self.get_chosen_files()
         key = Keys.load_key(self.key_edit.text())
+        if self.run_is_valid():
+            if self.encrypt:
+                for file in chosen_files:
+                    full_path = os.path.join(self.input_dir_edit.text(), file)
+                    Security.binary_encrypt(key=key, input_path=full_path, output_dir=self.output_dir_edit.text())
 
-        if self.encrypt:
-            for file in chosen_files:
-                full_path = os.path.join(self.input_dir_edit.text(), file)
-                Security.binary_encrypt(key=key, input_path=full_path, output_dir=self.output_dir_edit.text())
+                msg = f"Files have been encrypted!\n\n Find them in {self.output_dir_edit.text()}"
 
-            msg = f"Files have been decrypted!\n\n Find them in {self.output_dir_edit.text()}"
+            else:
+                for file in chosen_files:
+                    full_path = os.path.join(self.input_dir_edit.text(), file)
 
-        else:
-            for file in chosen_files:
-                full_path = os.path.join(self.input_dir_edit.text(), file)
-                Security.binary_decrypt(key=key, input_path=full_path, output_dir=self.output_dir_edit.text())
+                    Security.binary_decrypt(key=key, input_path=full_path, output_dir=self.output_dir_edit.text())
 
-            msg = f"Files have been decrypted!\n\n Find them in {self.output_dir_edit.text()}"
+                msg = f"Files have been decrypted!\n\n Find them in {self.output_dir_edit.text()}"
 
-        self.update_output_dir_list()
-        success_popup = QMessageBox()
-        success_popup.setText(msg)
-        success_popup.setWindowTitle("Run Complete")
-        success_popup.addButton('OK', QMessageBox.ButtonRole.AcceptRole)
-        success_popup.exec()
+            self.update_output_dir_list()
+            success_popup = QMessageBox()
+            success_popup.setText(msg)
+            success_popup.setWindowTitle("Run Complete")
+            success_popup.addButton('OK', QMessageBox.ButtonRole.AcceptRole)
+            success_popup.exec()
