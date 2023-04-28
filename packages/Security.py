@@ -4,6 +4,8 @@ from typing import Union
 import PyPDF2
 from cryptography.fernet import Fernet
 
+from packages.ErrorHandler import ErrorHandler
+
 
 class Security:
 
@@ -15,15 +17,17 @@ class Security:
             output_path = os.path.join(output_dir, filename.replace('.decrypted', '') + ext)
         else:
             output_path = os.path.join(output_dir, f"{filename}.encrypted{ext}")
+        try:
+            with open(input_path, 'rb') as f:
+                plaintext = f.read()
 
-        with open(input_path, 'rb') as f:
-            plaintext = f.read()
+            cipher = Fernet(key)
+            ciphertext = cipher.encrypt(plaintext)
 
-        cipher = Fernet(key)
-        ciphertext = cipher.encrypt(plaintext)
-
-        with open(output_path, 'wb') as f:
-            f.write(ciphertext)
+            with open(output_path, 'wb') as f:
+                f.write(ciphertext)
+        except PermissionError:
+            ErrorHandler.read_permission_error()
 
     @staticmethod
     def binary_decrypt(key: bytes, input_path: str, output_dir: str) -> None:

@@ -1,10 +1,12 @@
 import os
+from time import sleep
 from typing import List
 
 from PyQt6 import QtCore
 from PyQt6.QtWidgets import QWidget, QVBoxLayout, QPushButton, QHBoxLayout, \
     QMainWindow, QMessageBox, QFileDialog, QGroupBox, QLineEdit, QListWidget, QCheckBox, QListWidgetItem
 
+from app.gui_lamp import RoundLamp
 from packages.ErrorHandler import ErrorHandler
 from packages.Keys import Keys
 from packages.Security import Security
@@ -27,6 +29,8 @@ class MainWin(QMainWindow):
         # Cipher box
         self.gb_cipher = QGroupBox('Cipher')
         cipherkey_box = QHBoxLayout()
+
+        self.lamp = RoundLamp()
         self.key_edit = QLineEdit()
         self.key_edit.setPlaceholderText('Key input')
         self.key_edit.setReadOnly(True)
@@ -47,6 +51,7 @@ class MainWin(QMainWindow):
         self.decrypt_button.clicked.connect(self.decrypt)
         self.decrypt_button.setIconSize(QtCore.QSize(20, 64))
 
+        cipherkey_box.addWidget(self.lamp)
         cipherkey_box.addWidget(self.key_edit)
         cipherkey_box.addWidget(create_key)
         cipherkey_box.addWidget(load_key)
@@ -155,7 +160,13 @@ class MainWin(QMainWindow):
 
     def set_key_path(self):
         filename, _ = QFileDialog.getOpenFileName(self, 'Choose')
-        self.key_edit.setText(filename)
+        if Keys.load_key(filename) is None:
+            self.key_edit.setText('')
+            self.lamp.setRed()
+        else:
+            self.key_edit.setText(filename)
+            sleep(0.1)
+            self.lamp.setGreen()
 
     def encrypt(self):
         self.run.setEnabled(True)
@@ -194,6 +205,9 @@ class MainWin(QMainWindow):
             QMessageBox.information(self, 'Key saved', 'The key has been saved to the file: {}'.format(filename))
             self.key_edit.setText(filename)
 
+        sleep(0.1)
+        self.lamp.setGreen()
+
     def get_chosen_files(self) -> List[str]:
         files = []
         for i in range(self.input_list.count()):
@@ -204,24 +218,28 @@ class MainWin(QMainWindow):
         return files
 
     def run_is_valid(self) -> bool:
-        if self.input_dir_edit.text() == '':
+
+        if self.key_edit.text() == '':
+            ErrorHandler().missing_key_error()
+            self.lamp.setRed()
+            return False
+        elif self.input_dir_edit.text() == '':
             ErrorHandler().input_dir_missing_error()
             return False
         elif self.output_dir_edit.text() == '':
             ErrorHandler().output_dir_missing_error()
             return False
-        elif self.key_edit.text() == '':
-            ErrorHandler().key_missing_error()
-            return False
+
         elif not self.get_chosen_files():
             ErrorHandler().no_files_chosen_error()
             return False
         return True
 
     def on_run(self):
-        chosen_files = self.get_chosen_files()
-        key = Keys.load_key(self.key_edit.text())
+
         if self.run_is_valid():
+            chosen_files = self.get_chosen_files()
+            key = Keys.load_key(self.key_edit.text())
             if self.encrypt:
                 for file in chosen_files:
                     full_path = os.path.join(self.input_dir_edit.text(), file)
