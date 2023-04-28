@@ -20,7 +20,7 @@ To launch the application, run the following command in the root directory:
 To build the application as a standalone executable, navigate to the `app/freeze` directory and run the following command:
 
 
-This will generate a standalone executable in the `app/freeze/dist` directory.
+This will generate a standalone executable in the `./dist/` directory.
 
 ## License
 
