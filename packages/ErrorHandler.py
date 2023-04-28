@@ -14,6 +14,7 @@ class ErrorHandler:
         InvalidKeyError = ['Unable to load key. Make sure it is a valid Fernet key, or create a new one.',
                            'Unable to read Key']
         NoFilesChosen = ['Error: No files have been chosen!', 'No Files Chosen']
+        InvalidTokenError = ['Error: Unable to decrypt file!', 'InvalidTokenError']
 
     @classmethod
     def error_popup(cls, error: Enum) -> None:
@@ -47,3 +48,7 @@ class ErrorHandler:
     @classmethod
     def read_permission_error(cls) -> None:
         cls.error_popup(cls.ErrorMessages.ReadPermissionError)
+
+    @classmethod
+    def invalid_token_error(cls) -> None:
+        cls.error_popup(cls.ErrorMessages.InvalidTokenError)

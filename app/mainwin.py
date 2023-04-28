@@ -44,7 +44,7 @@ class MainWin(QMainWindow):
         settings_layout = QHBoxLayout()
 
         self.encrypt_button = QPushButton('Encrypt')
-        self.encrypt_button.clicked.connect(self.encrypt)
+        self.encrypt_button.clicked.connect(self._encrypt)
         self.encrypt_button.setIconSize(QtCore.QSize(25, 64))
 
         self.decrypt_button = QPushButton('Decrypt')
@@ -236,14 +236,15 @@ class MainWin(QMainWindow):
         return True
 
     def on_run(self):
-
+        success = False
         if self.run_is_valid():
             chosen_files = self.get_chosen_files()
             key = Keys.load_key(self.key_edit.text())
-            if self._encrypt:
+            if self.encrypt:
                 for file in chosen_files:
                     full_path = os.path.join(self.input_dir_edit.text(), file)
-                    Security.binary_encrypt(key=key, input_path=full_path, output_dir=self.output_dir_edit.text())
+                    success = Security.binary_encrypt(key=key, input_path=full_path,
+                                                      output_dir=self.output_dir_edit.text())
 
                 msg = f"Files have been encrypted!\n\n Find them in {self.output_dir_edit.text()}"
 
@@ -251,13 +252,14 @@ class MainWin(QMainWindow):
                 for file in chosen_files:
                     full_path = os.path.join(self.input_dir_edit.text(), file)
 
-                    Security.binary_decrypt(key=key, input_path=full_path, output_dir=self.output_dir_edit.text())
+                    success = Security.binary_decrypt(key=key, input_path=full_path,
+                                                      output_dir=self.output_dir_edit.text())
 
                 msg = f"Files have been decrypted!\n\n Find them in {self.output_dir_edit.text()}"
-
-            self.update_output_dir_list()
-            success_popup = QMessageBox()
-            success_popup.setText(msg)
-            success_popup.setWindowTitle("Run Complete")
-            success_popup.addButton('OK', QMessageBox.ButtonRole.AcceptRole)
-            success_popup.exec()
+            if success:
+                self.update_output_dir_list()
+                success_popup = QMessageBox()
+                success_popup.setText(msg)
+                success_popup.setWindowTitle("Run Complete")
+                success_popup.addButton('OK', QMessageBox.ButtonRole.AcceptRole)
+                success_popup.exec()

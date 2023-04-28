@@ -1,6 +1,7 @@
 import os.path
 from typing import Union
 
+import cryptography.fernet
 from cryptography.fernet import Fernet
 
 from packages.ErrorHandler import ErrorHandler
@@ -9,7 +10,7 @@ from packages.ErrorHandler import ErrorHandler
 class Security:
 
     @staticmethod
-    def binary_encrypt(key: bytes, input_path: str, output_dir: str) -> None:
+    def binary_encrypt(key: bytes, input_path: str, output_dir: str) -> bool:
         filename, ext = os.path.splitext(os.path.basename(input_path))
 
         if '.decrypted' in filename:
@@ -27,9 +28,11 @@ class Security:
                 f.write(ciphertext)
         except PermissionError:
             ErrorHandler.read_permission_error()
+            return False
+        return True
 
     @staticmethod
-    def binary_decrypt(key: bytes, input_path: str, output_dir: str) -> None:
+    def binary_decrypt(key: bytes, input_path: str, output_dir: str) -> bool:
         filename, ext = os.path.splitext(os.path.basename(input_path))
 
         if '.encrypted' in filename:
@@ -37,11 +40,28 @@ class Security:
         else:
             output_path = os.path.join(output_dir, f"{filename}.decrypted.{ext}")
 
-        with open(input_path, 'rb') as f:
-            ciphertext = f.read()
+        try:
+            with open(input_path, 'rb') as f:
+                ciphertext = f.read()
+        except PermissionError:
+            ErrorHandler.read_permission_error()
+            return False
 
         cipher = Fernet(key)
-        plaintext = cipher.decrypt(ciphertext)
 
-        with open(output_path, 'wb') as f:
-            f.write(plaintext)
+        try:
+            plaintext = cipher.decrypt(ciphertext)
+
+            try:
+                with open(output_path, 'wb') as f:
+                    f.write(plaintext)
+            except PermissionError:
+                ErrorHandler.read_permission_error()
+                return False
+
+        except cryptography.fernet.InvalidToken:
+            ErrorHandler.invalid_token_error()
+            return False
+
+        return True
+
