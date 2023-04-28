@@ -3,7 +3,9 @@
 EasyEncrypt is a simple encryption and decryption tool.
 
 The tool uses the `cryptography` library. Encryption is done by reading any file as binary and encrypt the content with a secret key using `cryptography.fernet.Fernet`
-#### NB: When encrypting, the tool creates a copy of the original, and encrypts its! The original file will still exist untouched by the program!
+#### NB: 
+When encrypting, the original file will still exist untouched by the program!
+
 ## Installation
 
 To install the application, clone this repository and run the following command in the root directory:
