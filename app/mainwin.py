@@ -168,7 +168,7 @@ class MainWin(QMainWindow):
             sleep(0.1)
             self.lamp.setGreen()
 
-    def encrypt(self):
+    def _encrypt(self):
         self.run.setEnabled(True)
         self.encrypt = True
         self.encrypt_button.setEnabled(False)
@@ -240,7 +240,7 @@ class MainWin(QMainWindow):
         if self.run_is_valid():
             chosen_files = self.get_chosen_files()
             key = Keys.load_key(self.key_edit.text())
-            if self.encrypt:
+            if self._encrypt:
                 for file in chosen_files:
                     full_path = os.path.join(self.input_dir_edit.text(), file)
                     Security.binary_encrypt(key=key, input_path=full_path, output_dir=self.output_dir_edit.text())
