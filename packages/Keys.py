@@ -22,7 +22,6 @@ class Keys:
     def is_valid_key(cls, key: bytes) -> bool:
         try:
             Fernet(key)
-            print("True")
             return True
         except ValueError:
             return False

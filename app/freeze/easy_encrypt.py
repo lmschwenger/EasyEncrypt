@@ -12,7 +12,7 @@ if __name__ == '__main__':
 
     # Create the main window object
     window = MainWin()
-    window.setWindowIcon(QIcon(os.path.join(window.resource_folder, 'key_icon.png')))
+    window.setWindowIcon(QIcon('D:\\Udvikling\\EasyEncrypt\\app\\resources\\key_icon.png'))
     window.setWindowTitle('EasyEncrypt')
     # Show the main window
     window.show()
