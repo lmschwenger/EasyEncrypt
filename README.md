@@ -15,12 +15,13 @@ To install the application, clone this repository and run the following command 
 
 To launch the application, run the following command in the root directory:
 
-`pyinstaller ./app/freeze/easy_encrypt.spec`
+`python ./app/freeze/easy_encrypt.py`
 
 ## Building
 
 To build the application as a standalone executable, navigate to the `app/freeze` directory and run the following command:
 
+`pyinstaller ./app/freeze/easy_encrypt.spec`
 
 This will generate a standalone executable in the `./dist/` directory.
 
