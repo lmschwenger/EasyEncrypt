@@ -15,7 +15,7 @@ class ErrorHandler:
                            'Unable to read Key']
         NoFilesChosen = ['Error: No files have been chosen!', 'No Files Chosen']
         InvalidTokenError = ['Error: Unable to decrypt file!', 'InvalidTokenError']
-
+        InvalidPasswordError = ['Error', 'Error']
     @classmethod
     def error_popup(cls, error: Enum) -> None:
         msg, title = error.value
@@ -52,3 +52,7 @@ class ErrorHandler:
     @classmethod
     def invalid_token_error(cls) -> None:
         cls.error_popup(cls.ErrorMessages.InvalidTokenError)
+
+    @classmethod
+    def invalid_password_error(cls) -> None:
+        cls.error_popup(cls.ErrorMessages.InvalidPasswordError)

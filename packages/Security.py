@@ -1,7 +1,6 @@
 import os.path
-from typing import Union
 
-import cryptography.fernet
+from PyQt6.QtWidgets import QProgressBar
 from cryptography.fernet import Fernet
 
 from packages.ErrorHandler import ErrorHandler
@@ -10,58 +9,76 @@ from packages.ErrorHandler import ErrorHandler
 class Security:
 
     @staticmethod
-    def binary_encrypt(key: bytes, input_path: str, output_dir: str) -> bool:
+    def binary_encrypt(key: bytes, input_path: str, output_dir: str, pg_bar: QProgressBar) -> bool:
         filename, ext = os.path.splitext(os.path.basename(input_path))
-
-        if '.decrypted' in filename:
-            output_path = os.path.join(output_dir, filename.replace('.decrypted', '') + ext)
+        chunk_size = 64 * 8196
+        print(ext)
+        if '.decrypted.' in filename:
+            output_path = os.path.join(output_dir, filename.replace('.decrypted.', '') + ext)
         else:
             output_path = os.path.join(output_dir, f"{filename}.encrypted{ext}")
         try:
-            with open(input_path, 'rb') as f:
-                plaintext = f.read()
 
             cipher = Fernet(key)
-            ciphertext = cipher.encrypt(plaintext)
+            input_size = os.path.getsize(input_path)
 
-            with open(output_path, 'wb') as f:
-                f.write(ciphertext)
+            with open(input_path, 'rb') as f_in:
+                with open(output_path, 'wb') as f_out:
+                    bytes_written = 0
+
+                    while True:
+                        pg_bar.show()
+                        chunk = f_in.read(chunk_size)
+                        if not chunk:
+                            break
+                        encrypted_chunk = cipher.encrypt(chunk)
+                        f_out.write(encrypted_chunk)
+                        bytes_written += len(encrypted_chunk)
+                        progress = int(bytes_written / input_size * 100)
+                        pg_bar.setValue(progress)
+
         except PermissionError:
             ErrorHandler.read_permission_error()
             return False
-        return True
-
-    @staticmethod
-    def binary_decrypt(key: bytes, input_path: str, output_dir: str) -> bool:
-        filename, ext = os.path.splitext(os.path.basename(input_path))
-
-        if '.encrypted' in filename:
-            output_path = os.path.join(output_dir, filename.replace('.encrypted', '') + ext)
-        else:
-            output_path = os.path.join(output_dir, f"{filename}.decrypted.{ext}")
-
-        try:
-            with open(input_path, 'rb') as f:
-                ciphertext = f.read()
-        except PermissionError:
-            ErrorHandler.read_permission_error()
-            return False
-
-        cipher = Fernet(key)
-
-        try:
-            plaintext = cipher.decrypt(ciphertext)
-
-            try:
-                with open(output_path, 'wb') as f:
-                    f.write(plaintext)
-            except PermissionError:
-                ErrorHandler.read_permission_error()
-                return False
-
-        except cryptography.fernet.InvalidToken:
+        except Exception:
             ErrorHandler.invalid_token_error()
             return False
 
         return True
 
+    @staticmethod
+    def binary_decrypt(key: bytes, input_path: str, output_dir: str, pg_bar: QProgressBar) -> bool:
+        filename, ext = os.path.splitext(os.path.basename(input_path))
+        chunk_size = 64 * 8196
+
+        if '.encrypted.' in filename:
+            output_path = os.path.join(output_dir, filename.replace('.encrypted.', '') + ext)
+        else:
+            output_path = os.path.join(output_dir, f"{filename}.decrypted{ext}")
+
+        try:
+            cipher = Fernet(key)
+            input_size = os.path.getsize(input_path)
+
+            with open(input_path, 'rb') as f_in:
+                with open(output_path, 'wb') as f_out:
+                    bytes_written = 0
+
+                    while True:
+                        chunk = f_in.read(chunk_size)
+                        if not chunk:
+                            break
+                        decrypted_chunk = cipher.decrypt(chunk)
+                        f_out.write(decrypted_chunk)
+                        bytes_written += len(decrypted_chunk)
+                        progress = int(bytes_written / input_size * 100)
+                        pg_bar.setValue(progress)
+
+        except PermissionError:
+            ErrorHandler.read_permission_error()
+            return False
+        except Exception:
+            ErrorHandler.invalid_token_error()
+            return False
+
+        return True

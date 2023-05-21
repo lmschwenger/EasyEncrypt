@@ -1,6 +1,6 @@
 import os
 
-from packages.Keys import generate_key, save_key, load_key
+from packages.KeyManager import generate_key, save_key, load_key
 
 output_dir = os.path.join('../data', 'output')
 input_dir = os.path.join('../data', 'input')

@@ -1,23 +1,27 @@
 import os
 from time import sleep
-from typing import List
+from typing import List, Tuple
 
 from PyQt6 import QtCore
 from PyQt6.QtWidgets import QWidget, QVBoxLayout, QPushButton, QHBoxLayout, \
-    QMainWindow, QMessageBox, QFileDialog, QGroupBox, QLineEdit, QListWidget, QCheckBox, QListWidgetItem
+    QMainWindow, QMessageBox, QFileDialog, QGroupBox, QLineEdit, QListWidget, QCheckBox, QListWidgetItem, QInputDialog, \
+    QProgressBar
 
 from app.gui_lamp import RoundLamp
 from packages.ErrorHandler import ErrorHandler
-from packages.Keys import Keys
+
+from packages.KeyManager import KeyManager
 from packages.Security import Security
 
 
 class MainWin(QMainWindow):
     resource_folder = os.path.join(os.path.dirname(__file__), 'resources')
     encrypt = None
+    password = None
 
     def __init__(self):
         super().__init__()
+
         self.resize(600, 600)
         # Create a vertical box layout for the main window
         vbox = QVBoxLayout()
@@ -116,7 +120,10 @@ class MainWin(QMainWindow):
         self.run.setEnabled(False)
         self.run.clicked.connect(self.on_run)
 
+        self.progress_bar = QProgressBar()
+
         run_layout.addWidget(self.run)
+        run_layout.addWidget(self.progress_bar)
         self.gb_run.setLayout(run_layout)
         vbox.addWidget(self.gb_run)
 
@@ -160,13 +167,24 @@ class MainWin(QMainWindow):
 
     def set_key_path(self):
         filename, _ = QFileDialog.getOpenFileName(self, 'Choose')
-        if Keys.load_key(filename) is None:
-            self.key_edit.setText('')
-            self.lamp.setRed()
-        else:
+
+        self.set_password()
+        try:
+            KeyManager.load_key(self.password, filename)
+
+            success_popup = QMessageBox()
+            success_popup.setText('Key sucessfully loaded!')
+            success_popup.setWindowTitle('Key Loaded')
+            success_popup.addButton('OK', QMessageBox.ButtonRole.AcceptRole)
+            success_popup.exec()
+
             self.key_edit.setText(filename)
             sleep(0.1)
             self.lamp.setGreen()
+        except:
+            ErrorHandler().invalid_password_error()
+            self.key_edit.setText('')
+            self.lamp.setRed()
 
     def _encrypt(self):
         self.run.setEnabled(True)
@@ -180,8 +198,17 @@ class MainWin(QMainWindow):
         self.decrypt_button.setEnabled(False)
         self.encrypt_button.setEnabled(True)
 
-    def on_generate_key(self):
-        # Create a QMessageBox object
+    @classmethod
+    def set_password(cls) -> None:
+        dialog = QInputDialog(None)
+        dialog.setWindowTitle('Password')
+        dialog.setLabelText('Enter your password:')
+        dialog.setTextEchoMode(QLineEdit.EchoMode.Password)
+
+        if dialog.exec() == QInputDialog.DialogCode.Accepted:
+            cls.password = dialog.textValue()
+
+    def get_save_popup(self) -> Tuple[QMessageBox, QPushButton]:
         popup = QMessageBox(self)
 
         # Set the message and title
@@ -193,20 +220,25 @@ class MainWin(QMainWindow):
         # Add the two choice buttons
         save_button = popup.addButton('Save', QMessageBox.ButtonRole.AcceptRole)
         popup.addButton('Cancel', QMessageBox.ButtonRole.RejectRole)
-
         # Show the pop-up window and wait for the user to interact with it
-        popup.exec()
+        return popup, save_button
 
-        key = Keys.generate_key()
+    def on_generate_key(self):
+        # Create a QMessageBox object
+
+        self.set_password()
+        key = KeyManager.create_key(self.password, salt=os.urandom(12))
+        popup, saved = self.get_save_popup()
+
         # If the user clicked the Save button, generate the key
-        if popup.clickedButton() == save_button:
+        if self.password != '':
             filename, _ = QFileDialog.getSaveFileName(self, 'Save Key', '', 'Key files (*.pem)')
-            Keys.save_key(key, filename)
+            KeyManager.save_key(key, self.password, filename)
             QMessageBox.information(self, 'Key saved', 'The key has been saved to the file: {}'.format(filename))
             self.key_edit.setText(filename)
 
-        sleep(0.1)
-        self.lamp.setGreen()
+            sleep(0.1)
+            self.lamp.setGreen()
 
     def get_chosen_files(self) -> List[str]:
         files = []
@@ -230,7 +262,7 @@ class MainWin(QMainWindow):
             ErrorHandler().output_dir_missing_error()
             return False
 
-        elif not self.get_chosen_files():
+        elif len(self.get_chosen_files()) == 0:
             ErrorHandler().no_files_chosen_error()
             return False
         return True
@@ -239,12 +271,13 @@ class MainWin(QMainWindow):
         success = False
         if self.run_is_valid():
             chosen_files = self.get_chosen_files()
-            key = Keys.load_key(self.key_edit.text())
+            key = KeyManager.load_key(self.password, self.key_edit.text())
+
             if self.encrypt:
                 for file in chosen_files:
                     full_path = os.path.join(self.input_dir_edit.text(), file)
                     success = Security.binary_encrypt(key=key, input_path=full_path,
-                                                      output_dir=self.output_dir_edit.text())
+                                                      output_dir=self.output_dir_edit.text(), pg_bar=self.progress_bar)
 
                 msg = f"Files have been encrypted!\n\n Find them in {self.output_dir_edit.text()}"
 
@@ -253,7 +286,7 @@ class MainWin(QMainWindow):
                     full_path = os.path.join(self.input_dir_edit.text(), file)
 
                     success = Security.binary_decrypt(key=key, input_path=full_path,
-                                                      output_dir=self.output_dir_edit.text())
+                                                      output_dir=self.output_dir_edit.text(), pg_bar=self.progress_bar)
 
                 msg = f"Files have been decrypted!\n\n Find them in {self.output_dir_edit.text()}"
             if success:
