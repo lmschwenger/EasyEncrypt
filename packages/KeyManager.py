@@ -2,7 +2,6 @@ import base64
 import os
 from typing import Union
 
-from argon2 import PasswordHasher
 from cryptography.fernet import Fernet
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import hashes

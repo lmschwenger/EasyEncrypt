@@ -13,10 +13,11 @@ class Security:
         filename, ext = os.path.splitext(os.path.basename(input_path))
         chunk_size = 64 * 8196
         print(ext)
-        if '.decrypted.' in filename:
-            output_path = os.path.join(output_dir, filename.replace('.decrypted.', '') + ext)
+        if '.decrypted' in filename:
+            output_path = input_path.replace('.decrypted', '.encrypted')
         else:
             output_path = os.path.join(output_dir, f"{filename}.encrypted{ext}")
+
         try:
 
             cipher = Fernet(key)
@@ -50,9 +51,9 @@ class Security:
     def binary_decrypt(key: bytes, input_path: str, output_dir: str, pg_bar: QProgressBar) -> bool:
         filename, ext = os.path.splitext(os.path.basename(input_path))
         chunk_size = 64 * 8196
-
-        if '.encrypted.' in filename:
-            output_path = os.path.join(output_dir, filename.replace('.encrypted.', '') + ext)
+        
+        if '.encrypted' in filename:
+            output_path = input_path.replace('.encrypted', '')
         else:
             output_path = os.path.join(output_dir, f"{filename}.decrypted{ext}")
 
