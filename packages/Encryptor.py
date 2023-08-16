@@ -6,7 +6,7 @@ from cryptography.fernet import Fernet
 from packages.ErrorHandler import ErrorHandler
 
 
-class Security:
+class Encryptor:
 
     @staticmethod
     def binary_encrypt(key: bytes, input_path: str, output_dir: str, pg_bar: QProgressBar) -> bool:

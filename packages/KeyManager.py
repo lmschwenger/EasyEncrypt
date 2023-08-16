@@ -13,7 +13,6 @@ from packages.ErrorHandler import ErrorHandler
 
 
 class KeyManager:
-
     @classmethod
     def generate_key(cls) -> bytes:
         return Fernet.generate_key()

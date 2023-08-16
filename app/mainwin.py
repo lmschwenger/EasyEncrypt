@@ -1,6 +1,6 @@
 import os
 from time import sleep
-from typing import List, Tuple
+from typing import List, Tuple, Optional
 
 from PyQt6 import QtCore
 from PyQt6.QtWidgets import QWidget, QVBoxLayout, QPushButton, QHBoxLayout, \
@@ -8,10 +8,9 @@ from PyQt6.QtWidgets import QWidget, QVBoxLayout, QPushButton, QHBoxLayout, \
     QProgressBar
 
 from app.gui_lamp import RoundLamp
+from packages.Encryptor import Encryptor
 from packages.ErrorHandler import ErrorHandler
-
 from packages.KeyManager import KeyManager
-from packages.Security import Security
 
 
 class MainWin(QMainWindow):
@@ -21,7 +20,7 @@ class MainWin(QMainWindow):
 
     def __init__(self):
         super().__init__()
-
+        self._settings = QtCore.QSettings("OpenOrg", "Easy Encrypt")
         self.resize(600, 600)
         # Create a vertical box layout for the main window
         vbox = QVBoxLayout()
@@ -131,6 +130,32 @@ class MainWin(QMainWindow):
         widget.setLayout(vbox)
         self.setCentralWidget(widget)
 
+        if self._key_found():
+            reply = QMessageBox.question(
+                self,
+                "Confirmation",
+                "Do you want to use latest settings?",
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            )
+
+            if reply == QMessageBox.StandardButton.Yes:
+                self.input_dir_edit.setText(self._settings.value("easy_encrypt_input_path"))
+                self.output_dir_edit.setText(self._settings.value("easy_encrypt_output_path"))
+                self.key_edit.setText(self._settings.value("easy_encrypt_secret"))
+                self.set_key_path()
+                self.update_input_dir_list()
+                self.update_output_dir_list()
+        else:
+            self._settings.setValue("easy_encrypt_input_path", None)
+            self._settings.setValue("easy_encrypt_output_path", None)
+
+    def _key_found(self) -> bool:
+        if not self._settings.contains("easy_encrypt_secret"):
+            self._settings.setValue("easy_encrypt_secret", None)
+            return False
+        print("les go")
+        return os.path.exists(self._settings.value("easy_encrypt_secret"))
+
     def update_input_dir_list(self):
         self.input_list.clear()
         try:
@@ -157,16 +182,31 @@ class MainWin(QMainWindow):
 
     def set_output_folder(self):
         url = QFileDialog.getExistingDirectory(self)
+        if url == '':
+            return
         self.output_dir_edit.setText(url)
         self.update_output_dir_list()
+        self._settings.setValue("easy_encrypt_output_path", url)
 
     def set_input_folder(self):
         url = QFileDialog.getExistingDirectory(self)
+        if url == '':
+            return
         self.input_dir_edit.setText(url)
+
+        self.input_dir_edit.setText(self._settings.value("easy_encrypt_input_path"))
         self.update_input_dir_list()
+        self._settings.setValue("easy_encrypt_input_path", url)
 
     def set_key_path(self):
-        filename, _ = QFileDialog.getOpenFileName(self, 'Choose')
+
+        if self.key_edit.text() == '':
+            filename, _ = QFileDialog.getOpenFileName(self, 'Choose')
+
+            if filename == '':
+                return
+        else:
+            filename = self.key_edit.text()
 
         self.set_password()
         try:
@@ -181,22 +221,29 @@ class MainWin(QMainWindow):
             self.key_edit.setText(filename)
             sleep(0.1)
             self.lamp.setGreen()
+            self._settings.setValue("easy_encrypt_secret", filename)
         except:
             ErrorHandler().invalid_password_error()
             self.key_edit.setText('')
             self.lamp.setRed()
 
     def _encrypt(self):
+
         self.run.setEnabled(True)
         self.encrypt = True
         self.encrypt_button.setEnabled(False)
         self.decrypt_button.setEnabled(True)
+        self._settings.setValue("easy_encrypt_secret", self.key_edit.text())
+        print(self._settings.value("easy_encrypt_secret"))
+        self._settings.sync()
 
     def decrypt(self):
         self.run.setEnabled(True)
         self.encrypt = False
         self.decrypt_button.setEnabled(False)
         self.encrypt_button.setEnabled(True)
+        self._settings.setValue("easy_encrypt_secret", self.key_edit.text())
+        self._settings.sync()
 
     @classmethod
     def set_password(cls) -> None:
@@ -234,11 +281,12 @@ class MainWin(QMainWindow):
         if self.password != '':
             filename, _ = QFileDialog.getSaveFileName(self, 'Save Key', '', 'Key files (*.pem)')
             KeyManager.save_key(key, self.password, filename)
-            QMessageBox.information(self, 'Key saved', 'The key has been saved to the file: {}'.format(filename))
+            QMessageBox.information(self, f'Key saved', 'The key has been saved to the file: {}'.format(filename))
             self.key_edit.setText(filename)
 
             sleep(0.1)
             self.lamp.setGreen()
+            self.cache.write_line_to_cache(key='key', line=self.key_edit.text())
 
     def get_chosen_files(self) -> List[str]:
         files = []
@@ -276,8 +324,8 @@ class MainWin(QMainWindow):
             if self.encrypt:
                 for file in chosen_files:
                     full_path = os.path.join(self.input_dir_edit.text(), file)
-                    success = Security.binary_encrypt(key=key, input_path=full_path,
-                                                      output_dir=self.output_dir_edit.text(), pg_bar=self.progress_bar)
+                    success = Encryptor.binary_encrypt(key=key, input_path=full_path,
+                                                       output_dir=self.output_dir_edit.text(), pg_bar=self.progress_bar)
 
                 msg = f"Files have been encrypted!\n\n Find them in {self.output_dir_edit.text()}"
 
@@ -285,11 +333,14 @@ class MainWin(QMainWindow):
                 for file in chosen_files:
                     full_path = os.path.join(self.input_dir_edit.text(), file)
 
-                    success = Security.binary_decrypt(key=key, input_path=full_path,
-                                                      output_dir=self.output_dir_edit.text(), pg_bar=self.progress_bar)
+                    success = Encryptor.binary_decrypt(key=key, input_path=full_path,
+                                                       output_dir=self.output_dir_edit.text(), pg_bar=self.progress_bar)
 
                 msg = f"Files have been decrypted!\n\n Find them in {self.output_dir_edit.text()}"
             if success:
+                self.cache.write_line_to_cache(key='input_path', line=self.input_dir_edit.text())
+                self.cache.write_line_to_cache(key='output_path', line=self.output_dir_edit.text())
+
                 self.update_output_dir_list()
                 success_popup = QMessageBox()
                 success_popup.setText(msg)
