@@ -4,7 +4,7 @@ from typing import List, Tuple, Optional
 
 from PyQt6 import QtCore
 from PyQt6.QtWidgets import QWidget, QVBoxLayout, QPushButton, QHBoxLayout, \
-    QMainWindow, QMessageBox, QFileDialog, QGroupBox, QLineEdit, QListWidget, QCheckBox, QListWidgetItem, QInputDialog, \
+    QMainWindow, QMessageBox, QFileDialog, QGroupBox, QLineEdit, QListWidget, QCheckBox, QListWidgetItem, QInputDialog,\
     QProgressBar
 
 from app.gui_lamp import RoundLamp
@@ -211,14 +211,6 @@ class MainWin(QMainWindow):
         self.set_password()
         try:
             KeyManager.load_key(self.password, filename)
-
-            success_popup = QMessageBox()
-            success_popup.setText('Key sucessfully loaded!')
-            success_popup.setWindowTitle('Key Loaded')
-            success_popup.addButton('OK', QMessageBox.ButtonRole.AcceptRole)
-            success_popup.exec()
-
-            self.key_edit.setText(filename)
             sleep(0.1)
             self.lamp.setGreen()
             self._settings.setValue("easy_encrypt_secret", filename)
